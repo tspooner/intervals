@@ -2,7 +2,11 @@ use super::*;
 
 /// Type representing an open bound.
 #[derive(Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate")
+)]
 pub struct Open<V>(pub V);
 
 impl<V> crate::private::Sealed for Open<V> {}

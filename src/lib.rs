@@ -5,6 +5,10 @@
 //! implemented, and formatting is provided for ease-of-use.
 extern crate num_traits;
 
+#[cfg_attr(feature = "serde", macro_use)]
+#[cfg(feature = "serde")]
+extern crate serde_crate;
+
 use num_traits::{Zero, One, Unsigned};
 
 mod private {
@@ -31,7 +35,11 @@ pub type IntervalResult<L, R = L> = Result<Interval<L, R>, L, R>;
 /// assert_eq!(x.intersect(y), Interval::degenerate(0.0));
 /// ```
 #[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate")
+)]
 pub struct Interval<L: bounds::Bound, R: bounds::Bound<Value = L::Value>> {
     /// The left-hand bound.
     pub left: L,

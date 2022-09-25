@@ -3,7 +3,11 @@ use num_traits::{Num, NumCast};
 use super::{Partition, SubInterval};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate")
+)]
 /// Type representing a uniform partitioning of a closed interval.
 ///
 /// # Examples

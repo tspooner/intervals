@@ -2,7 +2,11 @@ use super::*;
 
 /// Type representing the absence of a bound.
 #[derive(Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate")
+)]
 pub struct NoBound<V>(pub std::marker::PhantomData<V>);
 
 impl<V> NoBound<V> {

@@ -2,7 +2,11 @@ use super::*;
 
 /// Union type representing a bound that is either open or closed.
 #[derive(Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate")
+)]
 pub enum OpenOrClosed<V> {
     /// The open bound variant.
     Open(V),

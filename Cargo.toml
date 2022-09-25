@@ -14,7 +14,7 @@ repository = "https://github.com/tspooner/intervals"
 documentation = "https://docs.rs/intervals"
 
 [features]
-default = []
+default = ["serde"]
 
 serde = ["serde_crate"]
 

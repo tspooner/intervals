@@ -71,7 +71,11 @@ where
 pub struct Validator;
 
 #[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate")
+)]
 pub enum ValidationError<L, R> {
     DecreasingBounds(L, R)
 }

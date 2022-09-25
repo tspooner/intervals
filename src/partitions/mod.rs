@@ -2,7 +2,11 @@
 use crate::{Interval, bounds};
 
 #[derive(Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate")
+)]
 pub enum PartitionError<B> {
     IllFormedBounds(B),
 }
@@ -19,7 +23,11 @@ impl<V: std::fmt::Debug + std::fmt::Display> std::fmt::Display for PartitionErro
 
 /// Type representing a single subinterval of a partition.
 #[derive(Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate")
+)]
 pub struct SubInterval<V> {
     /// The index of the subinterval.
     pub index: usize,

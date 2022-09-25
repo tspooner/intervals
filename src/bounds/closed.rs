@@ -2,7 +2,11 @@ use super::*;
 
 /// Type representing a closed bound.
 #[derive(Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate")
+)]
 pub struct Closed<V>(pub V);
 
 impl<V> crate::private::Sealed for Closed<V> {}
