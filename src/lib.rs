@@ -251,6 +251,9 @@ where
     L: bounds::Bound,
     R: bounds::Bound<Value = L::Value>,
 {
+    /// Returns true if the interval contains `val`.
+    ///
+    /// __Note__: see [Contains] for more details.
     pub fn contains(&self, val: L::Value) -> bool
     where
         Self: Contains<L, R>
