@@ -2,7 +2,7 @@
 name = "intervals"
 description = "A generic interval type with support for open/closed bounds."
 
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Tom Spooner <spooner10000@gmail.com>"]
 
 readme = "README.md"
@@ -14,7 +14,7 @@ repository = "https://github.com/tspooner/intervals"
 documentation = "https://docs.rs/intervals"
 
 [features]
-default = ["serde"]
+default = []
 
 serde = ["serde_crate"]
 
