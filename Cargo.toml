@@ -1,0 +1,32 @@
+[package]
+name = "intervals"
+description = "A generic interval type with support for open/closed bounds."
+
+version = "1.0.0"
+authors = ["Tom Spooner <spooner10000@gmail.com>"]
+
+readme = "README.md"
+license-file = "LICENSE"
+
+keywords = ["interval", "bounds"]
+
+repository = "https://github.com/tspooner/intervals"
+documentation = "https://docs.rs/intervals"
+
+[features]
+default = []
+
+serde = ["serde_crate"]
+
+[dependencies]
+num-traits = "0.2"
+
+[dependencies.serde_crate]
+package = "serde"
+optional = true
+version = "1.0"
+default-features = false
+features = ["std", "derive"]
+
+[dev-dependencies]
+serde_test = "1.0"
