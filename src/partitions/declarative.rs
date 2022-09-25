@@ -5,7 +5,7 @@ use super::{Partition, SubInterval, PartitionError};
 /// Type representing an explicitly defined partition of an interval.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Declarative<const N: usize, V>([V; N]);
+pub struct Declarative<const N: usize, V>(pub [V; N]);
 
 impl<const N: usize, V: PartialOrd> Declarative<N, V> {
     pub fn new(bounds: [V; N]) -> Result<Self, PartitionError<[V; N]>> {
