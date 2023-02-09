@@ -32,7 +32,7 @@ pub type IntervalResult<L, R = L> = Result<Interval<L, R>, L, R>;
 /// assert!(x.contains(-0.5));
 /// assert!(y.contains(0.5));
 ///
-/// assert_eq!(x.intersect(y), Interval::degenerate(0.0));
+/// assert_eq!(x.intersect(y).unwrap(), Interval::degenerate(0.0));
 /// ```
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(
@@ -238,8 +238,10 @@ impl<L, R> Interval<L, R>
 where
     L: bounds::Bound,
     R: bounds::Bound<Value = L::Value>,
+
+    L::Value: PartialOrd,
 {
-    pub fn intersect<LL, RR>(self, other: Interval<LL, RR>) -> IntersectionOf<L, R, LL, RR>
+    pub fn intersect<LL, RR>(self, other: Interval<LL, RR>) -> Option<IntersectionOf<L, R, LL, RR>>
     where
         L: bounds::Pinch<LL>,
         R: bounds::Pinch<RR>,
@@ -247,9 +249,17 @@ where
         LL: bounds::Bound,
         RR: bounds::Bound<Value = LL::Value>,
     {
-        Interval {
-            left: self.left.pinch_up(other.left),
-            right: self.right.pinch_down(other.right),
+        let left = self.left.pinch_up(other.left);
+        let right = self.right.pinch_down(other.right);
+
+        let lic = bounds::Bound::is_closed(&left);
+        let ric = bounds::Bound::is_closed(&right);
+
+        match (bounds::Bound::value(&left), bounds::Bound::value(&right)) {
+            (Some(l), Some(r)) if l < r => Some(Interval { left, right, }),
+            (Some(l), Some(r)) if l == r && lic && ric => Some(Interval { left, right, }),
+
+            _ => None,
         }
     }
 }
@@ -496,7 +506,33 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_intersect() {
+    fn test_intersect_empty() {
+        // Empty:
+        let i1 = Interval {
+            left: bounds::Closed(0),
+            right: bounds::Open(5usize),
+        };
+        let i2 = Interval {
+            left: bounds::Open(10),
+            right: bounds::Closed(100usize),
+        };
+
+        assert!(i1.intersect(i2).is_none());
+        assert!(i2.intersect(i1).is_none());
+
+        // Close but no cigar:
+        assert!(Interval::left_open(0.0).intersect(Interval::right_open(0.0)).is_none());
+        assert!(Interval::left_closed(0.0).intersect(Interval::right_open(0.0)).is_none());
+        assert!(Interval::left_open(0.0).intersect(Interval::right_closed(0.0)).is_none());
+        assert_eq!(
+            Interval::left_closed(0.0).intersect(Interval::right_closed(0.0)).unwrap(),
+            Interval::degenerate(0.0)
+        );
+    }
+
+    #[test]
+    fn test_intersect_nonempty() {
+        // Empty:
         let i1 = Interval {
             left: bounds::Closed(0),
             right: bounds::Open(100usize),
@@ -506,7 +542,12 @@ mod tests {
             right: bounds::Closed(100usize),
         };
 
-        assert_eq!(i1.intersect(i2), Interval {
+        assert_eq!(i1.intersect(i2).unwrap(), Interval {
+            left: bounds::Open(10),
+            right: bounds::Open(100usize),
+        });
+
+        assert_eq!(i2.intersect(i1).unwrap(), Interval {
             left: bounds::Open(10),
             right: bounds::Open(100usize),
         });
