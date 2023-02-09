@@ -248,19 +248,13 @@ where
 
         LL: bounds::Bound,
         RR: bounds::Bound<Value = LL::Value>,
+
+        bounds::Validator: bounds::ValidateBounds<L::Left, R::Right>,
     {
         let left = self.left.pinch_left(other.left);
         let right = self.right.pinch_right(other.right);
 
-        let lic = bounds::Bound::is_closed(&left);
-        let ric = bounds::Bound::is_closed(&right);
-
-        match (bounds::Bound::value(&left), bounds::Bound::value(&right)) {
-            (Some(l), Some(r)) if l < r => Some(Interval { left, right, }),
-            (Some(l), Some(r)) if l == r && lic && ric => Some(Interval { left, right, }),
-
-            _ => None,
-        }
+        Interval::new(left, right).ok()
     }
 }
 
