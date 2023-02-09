@@ -15,6 +15,14 @@ pub enum OpenOrClosed<V> {
     Closed(V),
 }
 
+impl<V> OpenOrClosed<V> {
+    pub fn unwrap(self) -> V {
+        match self {
+            OpenOrClosed::Open(x) | OpenOrClosed::Closed(x) => x,
+        }
+    }
+}
+
 impl<V> crate::private::Sealed for OpenOrClosed<V> {}
 
 impl<V> Bound for OpenOrClosed<V> {
