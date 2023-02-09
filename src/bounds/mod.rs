@@ -4,7 +4,7 @@ use std::fmt;
 /// Trait for types that represent upper/lower bounds.
 pub trait Bound: crate::private::Sealed {
     /// Underlying type associated with the bound.
-    type Value;
+    type Value: PartialOrd;
 
     /// Corresponding bound given inclusion of limit point.
     type WithLimit: Bound<Value = Self::Value>;
@@ -34,14 +34,17 @@ pub trait BoundDisplay: Bound {
     fn fmt_right(&self, f: &mut fmt::Formatter) -> fmt::Result;
 }
 
-/// Trait for "pinching" bounds upwards and downwards.
+/// Trait for "pinching" bounds on the left and right.
+///
+/// We define the pinch operation as the logic applied at the left and
+/// right boundaries of a pair of intervals when taking the intersection.
 pub trait Pinch<T>: Bound {
-    type Up: Bound<Value = Self::Value>;
-    type Down: Bound<Value = Self::Value>;
+    type Left: Bound<Value = Self::Value>;
+    type Right: Bound<Value = Self::Value>;
 
-    fn pinch_up(self, other: T) -> Self::Up;
+    fn pinch_left(self, other: T) -> Self::Left;
 
-    fn pinch_down(self, other: T) -> Self::Down;
+    fn pinch_right(self, other: T) -> Self::Right;
 }
 
 mod no_bound;
@@ -88,7 +91,7 @@ pub trait ValidateBounds<L: Bound, R: Bound> {
 
 macro_rules! impl_val {
     ($v:ident; $l:ty, $r:ty) => {
-        impl<V> ValidateBounds<$l, $r> for Validator {
+        impl<V: PartialOrd> ValidateBounds<$l, $r> for Validator {
             fn validate(l: $l, r: $r) -> ValidationResult<$l, $r> { Ok((l, r)) }
         }
     };
@@ -105,7 +108,7 @@ macro_rules! impl_val {
     };
 }
 
-impl<V> ValidateBounds<NoBound<V>, NoBound<V>> for Validator {
+impl<V: PartialOrd> ValidateBounds<NoBound<V>, NoBound<V>> for Validator {
     fn validate(l: NoBound<V>, r: NoBound<V>) -> ValidationResult<NoBound<V>, NoBound<V>> {
         Ok((l, r))
     }
@@ -121,75 +124,3 @@ impl_val!(V: PartialOrd; Open<V>, Open<V>);
 impl_val!(V: PartialOrd; Closed<V>, Open<V>);
 impl_val!(V: PartialOrd; Open<V>, Closed<V>);
 impl_val!(V: PartialOrd; Closed<V>, Closed<V>);
-
-// PartialEq => Open<V>
-impl<V> std::cmp::PartialEq<Closed<V>> for Open<V> {
-    fn eq(&self, _: &Closed<V>) -> bool { false }
-}
-
-impl<V> std::cmp::PartialEq<NoBound<V>> for Open<V> {
-    fn eq(&self, _: &NoBound<V>) -> bool { false }
-}
-
-impl<V: PartialEq> std::cmp::PartialEq<OpenOrClosed<V>> for Open<V> {
-    fn eq(&self, rhs: &OpenOrClosed<V>) -> bool {
-        match rhs {
-            &OpenOrClosed::Open(ref inner) => self.0.eq(&inner),
-            _ => false,
-        }
-    }
-}
-
-// PartialEq => Closed<V>
-impl<V> std::cmp::PartialEq<Open<V>> for Closed<V> {
-    fn eq(&self, _: &Open<V>) -> bool { false }
-}
-
-impl<V> std::cmp::PartialEq<NoBound<V>> for Closed<V> {
-    fn eq(&self, _: &NoBound<V>) -> bool { false }
-}
-
-impl<V: PartialEq> std::cmp::PartialEq<OpenOrClosed<V>> for Closed<V> {
-    fn eq(&self, rhs: &OpenOrClosed<V>) -> bool {
-        match rhs {
-            &OpenOrClosed::Closed(ref inner) => self.0.eq(&inner),
-            _ => false,
-        }
-    }
-}
-
-// PartialEq => NoBound<V>
-impl<V> std::cmp::PartialEq<Open<V>> for NoBound<V> {
-    fn eq(&self, _: &Open<V>) -> bool { false }
-}
-
-impl<V> std::cmp::PartialEq<Closed<V>> for NoBound<V> {
-    fn eq(&self, _: &Closed<V>) -> bool { false }
-}
-
-impl<V> std::cmp::PartialEq<OpenOrClosed<V>> for NoBound<V> {
-    fn eq(&self, _: &OpenOrClosed<V>) -> bool { false }
-}
-
-// PartialEq => OpenOrClosed<V>
-impl<V: PartialEq> std::cmp::PartialEq<Open<V>> for OpenOrClosed<V> {
-    fn eq(&self, rhs: &Open<V>) -> bool {
-        match self {
-            &OpenOrClosed::Open(ref inner) => inner.eq(&rhs.0),
-            _ => false,
-        }
-    }
-}
-
-impl<V: PartialEq> std::cmp::PartialEq<Closed<V>> for OpenOrClosed<V> {
-    fn eq(&self, rhs: &Closed<V>) -> bool {
-        match self {
-            &OpenOrClosed::Closed(ref inner) => inner.eq(&rhs.0),
-            _ => false,
-        }
-    }
-}
-
-impl<V> std::cmp::PartialEq<NoBound<V>> for OpenOrClosed<V> {
-    fn eq(&self, _: &NoBound<V>) -> bool { false }
-}

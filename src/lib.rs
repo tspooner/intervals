@@ -83,7 +83,7 @@ impl<L: bounds::Bound> Interval<L, bounds::NoBound<L::Value>> {
     }
 }
 
-impl<V> LeftOpen<V> {
+impl<V: PartialOrd> LeftOpen<V> {
     /// Construct a left-open interval, unbounded on the right.
     pub fn left_open(left: V) -> Self {
         Interval {
@@ -93,7 +93,7 @@ impl<V> LeftOpen<V> {
     }
 }
 
-impl<V> LeftClosed<V> {
+impl<V: PartialOrd> LeftClosed<V> {
     /// Construct a left-closed interval, unbounded on the right.
     pub fn left_closed(left: V) -> Self {
         Interval {
@@ -113,7 +113,7 @@ impl<R: bounds::Bound> Interval<bounds::NoBound<R::Value>, R> {
     }
 }
 
-impl<V> RightOpen<V> {
+impl<V: PartialOrd> RightOpen<V> {
     /// Construct a right-open interval, unbounded on the left.
     pub fn right_open(right: V) -> Self {
         Interval {
@@ -123,7 +123,7 @@ impl<V> RightOpen<V> {
     }
 }
 
-impl<V> RightClosed<V> {
+impl<V: PartialOrd> RightClosed<V> {
     /// Construct a right-closed interval, unbounded on the left.
     pub fn right_closed(right: V) -> Self {
         Interval {
@@ -133,7 +133,7 @@ impl<V> RightClosed<V> {
     }
 }
 
-impl<V> LORC<V> {
+impl<V: PartialOrd> LORC<V> {
     /// Construct a left-open, right-closed interval.
     pub fn lorc(left: V, right: V) -> Self {
         Interval {
@@ -143,7 +143,7 @@ impl<V> LORC<V> {
     }
 }
 
-impl<V> LCRO<V> {
+impl<V: PartialOrd> LCRO<V> {
     /// Construct a left-closed, right-open interval.
     pub fn lcro(left: V, right: V) -> Self {
         Interval {
@@ -153,7 +153,7 @@ impl<V> LCRO<V> {
     }
 }
 
-impl<V> Unbounded<V> {
+impl<V: PartialOrd> Unbounded<V> {
     /// Construct a totally unbounded interval.
     pub fn unbounded() -> Self {
         Interval {
@@ -197,7 +197,7 @@ impl<V: PartialOrd> Closed<V> {
     }
 }
 
-impl<V: Clone> Closed<V> {
+impl<V: PartialOrd + Clone> Closed<V> {
     /// Construct a degenerate interval: [a, a].
     pub fn degenerate(value: V) -> Self {
         Interval {
@@ -207,7 +207,7 @@ impl<V: Clone> Closed<V> {
     }
 }
 
-impl<V: Zero + One> Closed<V> {
+impl<V: Zero + One + PartialOrd> Closed<V> {
     /// Construct a unit interval: [0, 1].
     pub fn unit() -> Self {
         Interval {
@@ -217,7 +217,7 @@ impl<V: Zero + One> Closed<V> {
     }
 }
 
-impl<V> Closed<V> {
+impl<V: PartialOrd> Closed<V> {
     /// Construct a uniform partition over the interval.
     pub fn linspace(self, n_partitions: usize) -> partitions::Uniform<V> {
         partitions::Uniform {
@@ -230,8 +230,8 @@ impl<V> Closed<V> {
 
 /// Type alias to simplify intersection return types.
 pub type IntersectionOf<L, R, LL, RR> = Interval<
-    <L as bounds::Pinch<LL>>::Up,
-    <R as bounds::Pinch<RR>>::Down,
+    <L as bounds::Pinch<LL>>::Left,
+    <R as bounds::Pinch<RR>>::Right,
 >;
 
 impl<L, R> Interval<L, R>
@@ -249,8 +249,8 @@ where
         LL: bounds::Bound,
         RR: bounds::Bound<Value = LL::Value>,
     {
-        let left = self.left.pinch_up(other.left);
-        let right = self.right.pinch_down(other.right);
+        let left = self.left.pinch_left(other.left);
+        let right = self.right.pinch_right(other.right);
 
         let lic = bounds::Bound::is_closed(&left);
         let ric = bounds::Bound::is_closed(&right);
@@ -321,12 +321,12 @@ pub trait Bounded: private::Sealed {}
 
 macro_rules! impl_bounded {
     (V: $($trait:ident),* => $l:ty, $r:ty) => {
-        impl<V: $($trait),*> private::Sealed for Interval<$l, $r> {}
-        impl<V: $($trait),*> Bounded for Interval<$l, $r> {}
+        impl<V: PartialOrd + $($trait),*> private::Sealed for Interval<$l, $r> {}
+        impl<V: PartialOrd + $($trait),*> Bounded for Interval<$l, $r> {}
     };
     ($l:ty, $r:ty) => {
-        impl<V> private::Sealed for Interval<$l, $r> {}
-        impl<V> Bounded for Interval<$l, $r> {}
+        impl<V: PartialOrd> private::Sealed for Interval<$l, $r> {}
+        impl<V: PartialOrd> Bounded for Interval<$l, $r> {}
     };
 }
 
@@ -353,7 +353,7 @@ pub trait Contains<L: bounds::Bound, R: bounds::Bound<Value = L::Value>> {
     fn contains(&self, val: L::Value) -> bool;
 }
 
-impl<V> Contains<bounds::NoBound<V>, bounds::NoBound<V>> for Unbounded<V> {
+impl<V: PartialOrd> Contains<bounds::NoBound<V>, bounds::NoBound<V>> for Unbounded<V> {
     fn contains(&self, _: V) -> bool { true }
 }
 

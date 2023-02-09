@@ -28,7 +28,7 @@ impl<V: std::fmt::Debug + std::fmt::Display> std::fmt::Display for PartitionErro
     derive(Serialize, Deserialize),
     serde(crate = "serde_crate")
 )]
-pub struct SubInterval<V> {
+pub struct SubInterval<V: PartialOrd> {
     /// The index of the subinterval.
     pub index: usize,
 
@@ -36,7 +36,7 @@ pub struct SubInterval<V> {
     pub interval: Interval<bounds::Closed<V>, bounds::OpenOrClosed<V>>,
 }
 
-impl<V: Clone> SubInterval<V> {
+impl<V: PartialOrd + Clone> SubInterval<V> {
     pub fn width(&self) -> V::Output
     where
         V: std::ops::Sub,
@@ -66,7 +66,7 @@ impl<V: Clone> SubInterval<V> {
 /// Trait for types that represent a partitioning over an interval.
 pub trait Partition {
     /// The type associated with the overarching interval.
-    type Value;
+    type Value: PartialOrd;
 
     /// Return the number of subintervals in the partition.
     fn len(&self) -> usize;
