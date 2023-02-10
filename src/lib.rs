@@ -502,14 +502,8 @@ mod tests {
     #[test]
     fn test_intersect_empty() {
         // Empty:
-        let i1 = Interval {
-            left: bounds::Closed(0),
-            right: bounds::Open(5usize),
-        };
-        let i2 = Interval {
-            left: bounds::Open(10),
-            right: bounds::Closed(100usize),
-        };
+        let i1 = Interval::lcro(0, 5usize);
+        let i2 = Interval::lorc(10, 100);
 
         assert!(i1.intersect(i2).is_none());
         assert!(i2.intersect(i1).is_none());
@@ -526,24 +520,15 @@ mod tests {
 
     #[test]
     fn test_intersect_nonempty() {
-        // Empty:
-        let i1 = Interval {
-            left: bounds::Closed(0),
-            right: bounds::Open(100usize),
-        };
-        let i2 = Interval {
-            left: bounds::Open(10),
-            right: bounds::Closed(100usize),
-        };
+        let i1 = Interval::lcro(0, 100usize);
+        let i2 = Interval::lorc(10, 100);
 
-        assert_eq!(i1.intersect(i2).unwrap(), Interval {
-            left: bounds::Open(10),
-            right: bounds::Open(100usize),
-        });
+        assert_eq!(i1.intersect(i2).unwrap(), Interval::open_unchecked(10, 100));
+        assert_eq!(i2.intersect(i1).unwrap(), Interval::open_unchecked(10, 100));
+    }
 
-        assert_eq!(i2.intersect(i1).unwrap(), Interval {
-            left: bounds::Open(10),
-            right: bounds::Open(100usize),
-        });
+    #[test]
+    fn test_intersect_overlaps() {
+
     }
 }
