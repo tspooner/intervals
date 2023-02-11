@@ -195,8 +195,7 @@ impl<V: PartialOrd> ValidateBounds<Open<V>, Open<V>> for Validator {
 impl<V: PartialOrd> ValidateBounds<OpenOrClosed<V>, Open<V>> for Validator {
     fn validate(l: OpenOrClosed<V>, r: Open<V>) -> ValidationResult<OpenOrClosed<V>, Open<V>> {
         let is_invalid = match &l {
-            OpenOrClosed::Open(x) => x >= &r.0,
-            OpenOrClosed::Closed(x) => x > &r.0,
+            OpenOrClosed::Open(x) | OpenOrClosed::Closed(x) => x >= &r.0,
         };
 
         if is_invalid {
@@ -210,8 +209,7 @@ impl<V: PartialOrd> ValidateBounds<OpenOrClosed<V>, Open<V>> for Validator {
 impl<V: PartialOrd> ValidateBounds<Open<V>, OpenOrClosed<V>> for Validator {
     fn validate(l: Open<V>, r: OpenOrClosed<V>) -> ValidationResult<Open<V>, OpenOrClosed<V>> {
         let is_invalid = match &r {
-            OpenOrClosed::Open(x) => &l.0 >= x,
-            OpenOrClosed::Closed(x) => &l.0 >= x,
+            OpenOrClosed::Open(x) | OpenOrClosed::Closed(x) => &l.0 >= x,
         };
 
         if is_invalid {
@@ -225,8 +223,10 @@ impl<V: PartialOrd> ValidateBounds<Open<V>, OpenOrClosed<V>> for Validator {
 impl<V: PartialOrd> ValidateBounds<OpenOrClosed<V>, OpenOrClosed<V>> for Validator {
     fn validate(l: OpenOrClosed<V>, r: OpenOrClosed<V>) -> ValidationResult<OpenOrClosed<V>, OpenOrClosed<V>> {
         let is_invalid = match (&l, &r) {
-            (&OpenOrClosed::Open(ref x), &OpenOrClosed::Open(ref y)) => x >= y,
-            (l, r) => l.proper_value() > r.proper_value(),
+            (&OpenOrClosed::Open(ref x), &OpenOrClosed::Open(ref y))
+                | (&OpenOrClosed::Closed(ref x), &OpenOrClosed::Open(ref y))
+                | (&OpenOrClosed::Open(ref x), &OpenOrClosed::Closed(ref y)) => x >= y,
+            (&OpenOrClosed::Closed(ref x), &OpenOrClosed::Closed(ref y)) => x > y,
         };
 
         if is_invalid {
@@ -300,6 +300,14 @@ mod tests {
         assert!(validate(Closed(0.0f64), OpenOrClosed::Open(0.0f64)).is_err());
         assert!(validate(Closed(0.0f64), OpenOrClosed::Open(1.0f64)).is_ok());
 
+        assert!(validate(OpenOrClosed::Closed(0.0f64), Open(-1.0f64)).is_err());
+        assert!(validate(OpenOrClosed::Closed(0.0f64), Open(0.0f64)).is_err());
+        assert!(validate(OpenOrClosed::Closed(0.0f64), Open(1.0f64)).is_ok());
+
+        assert!(validate(OpenOrClosed::Closed(0.0f64), OpenOrClosed::Open(-1.0f64)).is_err());
+        assert!(validate(OpenOrClosed::Closed(0.0f64), OpenOrClosed::Open(0.0f64)).is_err());
+        assert!(validate(OpenOrClosed::Closed(0.0f64), OpenOrClosed::Open(1.0f64)).is_ok());
+
         assert!(validate(Open(0.0f64), Closed(-1.0f64)).is_err());
         assert!(validate(Open(0.0f64), Closed(0.0f64)).is_err());
         assert!(validate(Open(0.0f64), Closed(1.0f64)).is_ok());
@@ -307,5 +315,13 @@ mod tests {
         assert!(validate(Open(0.0f64), OpenOrClosed::Closed(-1.0f64)).is_err());
         assert!(validate(Open(0.0f64), OpenOrClosed::Closed(0.0f64)).is_err());
         assert!(validate(Open(0.0f64), OpenOrClosed::Closed(1.0f64)).is_ok());
+
+        assert!(validate(OpenOrClosed::Open(0.0f64), Closed(-1.0f64)).is_err());
+        assert!(validate(OpenOrClosed::Open(0.0f64), Closed(0.0f64)).is_err());
+        assert!(validate(OpenOrClosed::Open(0.0f64), Closed(1.0f64)).is_ok());
+
+        assert!(validate(OpenOrClosed::Open(0.0f64), OpenOrClosed::Closed(-1.0f64)).is_err());
+        assert!(validate(OpenOrClosed::Open(0.0f64), OpenOrClosed::Closed(0.0f64)).is_err());
+        assert!(validate(OpenOrClosed::Open(0.0f64), OpenOrClosed::Closed(1.0f64)).is_ok());
     }
 }

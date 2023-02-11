@@ -25,6 +25,7 @@ pub type IntervalResult<L, R = L> = Result<Interval<L, R>, L, R>;
 ///
 /// # Examples
 /// ```
+/// # #[macro_use] extern crate intervals;
 /// # use intervals::{Interval, bounds};
 /// let x = Interval::closed_unchecked(-1.0, 0.0);
 /// let y = Interval::closed_unchecked(0.0, 1.0);
@@ -48,6 +49,36 @@ pub struct Interval<L: bounds::Bound, R: bounds::Bound<Value = L::Value>> {
     pub right: R,
 }
 
+/// Alias for an unbounded interval.
+pub type Unbounded<V> = Interval<bounds::NoBound<V>, bounds::NoBound<V>>;
+
+/// Alias for a bounded open interval.
+pub type Open<V> = Interval<bounds::Open<V>, bounds::Open<V>>;
+
+/// Alias for a left-open interval, unbounded on the right.
+pub type LeftOpen<V> = Interval<bounds::Open<V>, bounds::NoBound<V>>;
+
+/// Alias for a right-open interval, unbounded on the left.
+pub type RightOpen<V> = Interval<bounds::NoBound<V>, bounds::Open<V>>;
+
+/// Alias for a bounded closed interval.
+pub type Closed<V> = Interval<bounds::Closed<V>, bounds::Closed<V>>;
+
+/// Alias for a left-closed interval, unbounded on the right.
+pub type LeftClosed<V> = Interval<bounds::Closed<V>, bounds::NoBound<V>>;
+
+/// Alias for a right-closed interval, unbounded on the left.
+pub type RightClosed<V> = Interval<bounds::NoBound<V>, bounds::Closed<V>>;
+
+/// Alias for a left-closed, right-open interval.
+pub type LCRO<V> = Interval<bounds::Closed<V>, bounds::Open<V>>;
+
+/// Alias for a left-open, right-closed interval.
+pub type LORC<V> = Interval<bounds::Open<V>, bounds::Closed<V>>;
+
+///////////////////////////////////////////////////////////////////////////////
+// Implementation
+///////////////////////////////////////////////////////////////////////////////
 impl<L, R, LL, RR> PartialEq<Interval<LL, RR>> for Interval<L, R>
 where
     L: bounds::Bound + PartialEq<LL>,
@@ -67,10 +98,13 @@ where
 
     bounds::Validator: bounds::ValidateBounds<L, R>,
 {
-    /// Construct an interval with validation of bounds.
+    /// Construct an interval with bound validation.
     pub fn new(left: L, right: R) -> IntervalResult<L, R> {
         bounds::validate(left, right).map(|(left, right)| Interval { left, right, })
     }
+
+    /// Construct an interval w/o bound validation.
+    pub fn new_unchecked(left: L, right: R) -> Self { Interval { left, right, } }
 }
 
 impl<L: bounds::Bound> Interval<L, bounds::NoBound<L::Value>> {
@@ -134,22 +168,26 @@ impl<V: PartialOrd> RightClosed<V> {
 }
 
 impl<V: PartialOrd> LORC<V> {
-    /// Construct a left-open, right-closed interval.
-    pub fn lorc(left: V, right: V) -> Self {
-        Interval {
-            left: bounds::Open(left),
-            right: bounds::Closed(right),
-        }
+    /// Construct a left-open, right-closed interval with bound validation.
+    pub fn lorc(left: V, right: V) -> Result<Self, bounds::Open<V>, bounds::Closed<V>> {
+        Interval::new(bounds::Open(left), bounds::Closed(right))
+    }
+
+    /// Construct a left-open, right-closed interval w/o bound validation.
+    pub fn lorc_unchecked(left: V, right: V) -> Self {
+        Interval::new_unchecked(bounds::Open(left), bounds::Closed(right))
     }
 }
 
 impl<V: PartialOrd> LCRO<V> {
-    /// Construct a left-closed, right-open interval.
-    pub fn lcro(left: V, right: V) -> Self {
-        Interval {
-            left: bounds::Closed(left),
-            right: bounds::Open(right),
-        }
+    /// Construct a left-closed, right-open interval with bound validation.
+    pub fn lcro(left: V, right: V) -> Result<Self, bounds::Closed<V>, bounds::Open<V>> {
+        Interval::new(bounds::Closed(left), bounds::Open(right))
+    }
+
+    /// Construct a left-closed, right-open interval w/o bound validation.
+    pub fn lcro_unchecked(left: V, right: V) -> Self {
+        Interval::new_unchecked(bounds::Closed(left), bounds::Open(right))
     }
 }
 
@@ -164,56 +202,40 @@ impl<V: PartialOrd> Unbounded<V> {
 }
 
 impl<V: PartialOrd> Open<V> {
-    /// Construct a bounded open interval with validation.
-    pub fn open(left: V, right: V) -> IntervalResult<
-        bounds::Open<V>, bounds::Open<V>
-    > {
+    /// Construct a bounded open interval with bound validation.
+    pub fn open(left: V, right: V) -> IntervalResult<bounds::Open<V>, bounds::Open<V>> {
         Interval::new(bounds::Open(left), bounds::Open(right))
     }
 
-    /// Construct a bounded open interval without validation.
+    /// Construct a bounded open interval w/o bound validation.
     pub fn open_unchecked(left: V, right: V) -> Self {
-        Interval {
-            left: bounds::Open(left),
-            right: bounds::Open(right),
-        }
+        Interval::new_unchecked(bounds::Open(left), bounds::Open(right))
     }
 }
 
 impl<V: PartialOrd> Closed<V> {
-    /// Construct a bounded closed interval with validation.
-    pub fn closed(left: V, right: V) -> IntervalResult<
-        bounds::Closed<V>, bounds::Closed<V>
-    > {
+    /// Construct a bounded closed interval with bound validation.
+    pub fn closed(left: V, right: V) -> IntervalResult<bounds::Closed<V>, bounds::Closed<V>> {
         Interval::new(bounds::Closed(left), bounds::Closed(right))
     }
 
-    /// Construct a bounded closed interval without validation.
+    /// Construct a bounded closed interval w/o bound validation.
     pub fn closed_unchecked(left: V, right: V) -> Self {
-        Interval {
-            left: bounds::Closed(left),
-            right: bounds::Closed(right),
-        }
+        Interval::new_unchecked(bounds::Closed(left), bounds::Closed(right))
     }
 }
 
 impl<V: PartialOrd + Clone> Closed<V> {
     /// Construct a degenerate interval: [a, a].
     pub fn degenerate(value: V) -> Self {
-        Interval {
-            left: bounds::Closed(value.clone()),
-            right: bounds::Closed(value),
-        }
+        Interval::new_unchecked(bounds::Closed(value.clone()), bounds::Closed(value))
     }
 }
 
 impl<V: Zero + One + PartialOrd> Closed<V> {
     /// Construct a unit interval: [0, 1].
     pub fn unit() -> Self {
-        Interval {
-            left: bounds::Closed(V::zero()),
-            right: bounds::Closed(V::one()),
-        }
+        Interval::closed_unchecked(V::zero(), V::one())
     }
 }
 
@@ -465,70 +487,651 @@ impl<V: PartialOrd> Contains<bounds::OpenOrClosed<V>, bounds::Closed<V>> for Int
     }
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// Derived Types
-///////////////////////////////////////////////////////////////////////////////
-/// Alias for an unbounded interval.
-pub type Unbounded<V> = Interval<bounds::NoBound<V>, bounds::NoBound<V>>;
-
-/// Alias for a bounded open interval.
-pub type Open<V> = Interval<bounds::Open<V>, bounds::Open<V>>;
-
-/// Alias for a left-open interval, unbounded on the right.
-pub type LeftOpen<V> = Interval<bounds::Open<V>, bounds::NoBound<V>>;
-
-/// Alias for a right-open interval, unbounded on the left.
-pub type RightOpen<V> = Interval<bounds::NoBound<V>, bounds::Open<V>>;
-
-/// Alias for a bounded closed interval.
-pub type Closed<V> = Interval<bounds::Closed<V>, bounds::Closed<V>>;
-
-/// Alias for a left-closed interval, unbounded on the right.
-pub type LeftClosed<V> = Interval<bounds::Closed<V>, bounds::NoBound<V>>;
-
-/// Alias for a right-closed interval, unbounded on the left.
-pub type RightClosed<V> = Interval<bounds::NoBound<V>, bounds::Closed<V>>;
-
-/// Alias for a left-closed, right-open interval.
-pub type LCRO<V> = Interval<bounds::Closed<V>, bounds::Open<V>>;
-
-/// Alias for a left-open, right-closed interval.
-pub type LORC<V> = Interval<bounds::Open<V>, bounds::Closed<V>>;
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    macro_rules! i {
+        (Open[$left:expr, $right:expr]) => { $crate::Interval::open_unchecked($left, $right) };
+        (Closed[$left:expr, $right:expr]) => { $crate::Interval::closed_unchecked($left, $right) };
+
+        (LCRO[$left:expr, $right:expr]) => { $crate::Interval::lcro_unchecked($left, $right) };
+        (LORC[$left:expr, $right:expr]) => { $crate::Interval::lorc_unchecked($left, $right) };
+
+        (LO[$left:expr]) => { $crate::Interval::left_open($left) };
+        (LC[$left:expr]) => { $crate::Interval::left_closed($left) };
+
+        (RO[$right:expr]) => { $crate::Interval::right_open($right) };
+        (RC[$right:expr]) => { $crate::Interval::right_closed($right) };
+
+        (Degenerate[$x:expr]) => { $crate::Interval::degenerate($x) };
+    }
+
+    macro_rules! test_intersects {
+        ($x:expr; [$(($y:expr, |$z:ident| $test:expr)),+]) => {{
+            let x = $x;
+            $({
+                let y = $y;
+                let $z = x.intersect(y);
+
+                { $test }
+
+                let $z = y.intersect(x);
+
+                { $test }
+            })+
+        }};
+    }
+
+    // Unbounded \cap ...
     #[test]
-    fn test_intersect_empty() {
-        // Empty:
-        let i1 = Interval::lcro(0, 5usize);
-        let i2 = Interval::lorc(10, 100);
+    fn test_intersect_unbounded() {
+        test_intersects!(
+            Interval::unbounded();
+            [
+                (i!(Closed[0.0, 1.0]), |z| assert_eq!(z.unwrap(), i!(Closed[0.0, 1.0]))),
+                (i!(Open[0.0, 1.0]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0]))),
+                (i!(LORC[0.0, 1.0]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 1.0]))),
+                (i!(LCRO[0.0, 1.0]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 1.0]))),
+                (i!(LO[0.0]), |z| assert_eq!(z.unwrap(), i!(LO[0.0]))),
+                (i!(LC[0.0]), |z| assert_eq!(z.unwrap(), i!(LC[0.0]))),
+                (i!(RO[0.0]), |z| assert_eq!(z.unwrap(), i!(RO[0.0]))),
+                (i!(RC[0.0]), |z| assert_eq!(z.unwrap(), i!(RC[0.0])))
+            ]
+        );
+    }
 
-        assert!(i1.intersect(i2).is_none());
-        assert!(i2.intersect(i1).is_none());
-
-        // Close but no cigar:
-        assert!(Interval::left_open(0.0).intersect(Interval::right_open(0.0)).is_none());
-        assert!(Interval::left_closed(0.0).intersect(Interval::right_open(0.0)).is_none());
-        assert!(Interval::left_open(0.0).intersect(Interval::right_closed(0.0)).is_none());
-        assert_eq!(
-            Interval::left_closed(0.0).intersect(Interval::right_closed(0.0)).unwrap(),
-            Interval::degenerate(0.0)
+    // Closed \cap ...
+    #[test]
+    fn test_intersect_closed_closed() {
+        test_intersects!(
+            i!(Closed[0.0, 1.0]);
+            [
+                (i!(Closed[-2.0, -1.0]), |z| assert!(z.is_none())),
+                (i!(Closed[-1.0, 0.0]), |z| assert_eq!(z.unwrap(), i!(Degenerate[0.0]))),
+                (i!(Closed[-0.5, 0.5]), |z| assert_eq!(z.unwrap(), i!(Closed[0.0, 0.5]))),
+                (i!(Closed[0.0, 1.0]), |z| assert_eq!(z.unwrap(), i!(Closed[0.0, 1.0]))),
+                (i!(Closed[0.5, 1.5]), |z| assert_eq!(z.unwrap(), i!(Closed[0.5, 1.0]))),
+                (i!(Closed[1.0, 2.0]), |z| assert_eq!(z.unwrap(), i!(Degenerate[1.0]))),
+                (i!(Closed[2.0, 3.0]), |z| assert!(z.is_none()))
+            ]
         );
     }
 
     #[test]
-    fn test_intersect_nonempty() {
-        let i1 = Interval::lcro(0, 100usize);
-        let i2 = Interval::lorc(10, 100);
-
-        assert_eq!(i1.intersect(i2).unwrap(), Interval::open_unchecked(10, 100));
-        assert_eq!(i2.intersect(i1).unwrap(), Interval::open_unchecked(10, 100));
+    fn test_intersect_closed_open() {
+        test_intersects!(
+            i!(Closed[0.0, 1.0]);
+            [
+                (i!(Open[-2.0, -1.0]), |z| assert!(z.is_none())),
+                (i!(Open[-1.0, 0.0]), |z| assert!(z.is_none())),
+                (i!(Open[-0.5, 0.5]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 0.5]))),
+                (i!(Open[0.0, 1.0]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0]))),
+                (i!(Open[0.5, 1.5]), |z| assert_eq!(z.unwrap(), i!(LORC[0.5, 1.0]))),
+                (i!(Open[1.0, 2.0]), |z| assert!(z.is_none())),
+                (i!(Open[2.0, 3.0]), |z| assert!(z.is_none()))
+            ]
+        );
     }
 
     #[test]
-    fn test_intersect_overlaps() {
+    fn test_intersect_closed_lorc() {
+        test_intersects!(
+            i!(Closed[0.0, 1.0]);
+            [
+                (i!(LORC[-2.0, -1.0]), |z| assert!(z.is_none())),
+                (i!(LORC[-1.0, 0.0]), |z| assert_eq!(z.unwrap(), i!(Degenerate[0.0]))),
+                (i!(LORC[-0.5, 0.5]), |z| assert_eq!(z.unwrap(), i!(Closed[0.0, 0.5]))),
+                (i!(LORC[0.0, 1.0]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 1.0]))),
+                (i!(LORC[0.5, 1.5]), |z| assert_eq!(z.unwrap(), i!(LORC[0.5, 1.0]))),
+                (i!(LORC[1.0, 2.0]), |z| assert!(z.is_none())),
+                (i!(LORC[2.0, 3.0]), |z| assert!(z.is_none()))
+            ]
+        );
+    }
 
+    #[test]
+    fn test_intersect_closed_lcro() {
+        test_intersects!(
+            i!(Closed[0.0, 1.0]);
+            [
+                (i!(LCRO[-2.0, -1.0]), |z| assert!(z.is_none())),
+                (i!(LCRO[-1.0, 0.0]), |z| assert!(z.is_none())),
+                (i!(LCRO[-0.5, 0.5]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 0.5]))),
+                (i!(LCRO[0.0, 1.0]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 1.0]))),
+                (i!(LCRO[0.5, 1.5]), |z| assert_eq!(z.unwrap(), i!(Closed[0.5, 1.0]))),
+                (i!(LCRO[1.0, 2.0]), |z| assert_eq!(z.unwrap(), i!(Degenerate[1.0]))),
+                (i!(LCRO[2.0, 3.0]), |z| assert!(z.is_none()))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_closed_lo() {
+        test_intersects!(
+            i!(Closed[0.0, 1.0]);
+            [
+                (i!(LO[-2.0]), |z| assert_eq!(z.unwrap(), i!(Closed[0.0, 1.0]))),
+                (i!(LO[-1.0]), |z| assert_eq!(z.unwrap(), i!(Closed[0.0, 1.0]))),
+                (i!(LO[-0.5]), |z| assert_eq!(z.unwrap(), i!(Closed[0.0, 1.0]))),
+                (i!(LO[0.0]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 1.0]))),
+                (i!(LO[0.5]), |z| assert_eq!(z.unwrap(), i!(LORC[0.5, 1.0]))),
+                (i!(LO[1.0]), |z| assert!(z.is_none())),
+                (i!(LO[2.0]), |z| assert!(z.is_none()))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_closed_lc() {
+        test_intersects!(
+            i!(Closed[0.0, 1.0]);
+            [
+                (i!(LC[-2.0]), |z| assert_eq!(z.unwrap(), i!(Closed[0.0, 1.0]))),
+                (i!(LC[-1.0]), |z| assert_eq!(z.unwrap(), i!(Closed[0.0, 1.0]))),
+                (i!(LC[-0.5]), |z| assert_eq!(z.unwrap(), i!(Closed[0.0, 1.0]))),
+                (i!(LC[0.0]), |z| assert_eq!(z.unwrap(), i!(Closed[0.0, 1.0]))),
+                (i!(LC[0.5]), |z| assert_eq!(z.unwrap(), i!(Closed[0.5, 1.0]))),
+                (i!(LC[1.0]), |z| assert_eq!(z.unwrap(), i!(Degenerate[1.0]))),
+                (i!(LC[2.0]), |z| assert!(z.is_none()))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_closed_ro() {
+        test_intersects!(
+            i!(Closed[0.0, 1.0]);
+            [
+                (i!(RO[-2.0]), |z| assert!(z.is_none())),
+                (i!(RO[-1.0]), |z| assert!(z.is_none())),
+                (i!(RO[-0.5]), |z| assert!(z.is_none())),
+                (i!(RO[0.0]), |z| assert!(z.is_none())),
+                (i!(RO[0.5]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 0.5]))),
+                (i!(RO[1.0]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 1.0]))),
+                (i!(RO[2.0]), |z| assert_eq!(z.unwrap(), i!(Closed[0.0, 1.0])))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_closed_rc() {
+        test_intersects!(
+            i!(Closed[0.0, 1.0]);
+            [
+                (i!(RC[-2.0]), |z| assert!(z.is_none())),
+                (i!(RC[-1.0]), |z| assert!(z.is_none())),
+                (i!(RC[-0.5]), |z| assert!(z.is_none())),
+                (i!(RC[0.0]), |z| assert_eq!(z.unwrap(), i!(Degenerate[0.0]))),
+                (i!(RC[0.5]), |z| assert_eq!(z.unwrap(), i!(Closed[0.0, 0.5]))),
+                (i!(RC[1.0]), |z| assert_eq!(z.unwrap(), i!(Closed[0.0, 1.0]))),
+                (i!(RC[2.0]), |z| assert_eq!(z.unwrap(), i!(Closed[0.0, 1.0])))
+            ]
+        );
+    }
+
+    // Open \cap ...
+    #[test]
+    fn test_intersect_open_unbounded() {
+        test_intersects!(
+            i!(Open[0.0, 1.0]);
+            [
+                (Interval::unbounded(), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0])))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_open_open() {
+        test_intersects!(
+            i!(Open[0.0, 1.0]);
+            [
+                (i!(Open[-2.0, -1.0]), |z| assert!(z.is_none())),
+                (i!(Open[-1.0, 0.0]), |z| assert!(z.is_none())),
+                (i!(Open[-0.5, 0.5]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 0.5]))),
+                (i!(Open[0.0, 1.0]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0]))),
+                (i!(Open[0.5, 1.5]), |z| assert_eq!(z.unwrap(), i!(Open[0.5, 1.0]))),
+                (i!(Open[1.0, 2.0]), |z| assert!(z.is_none())),
+                (i!(Open[2.0, 3.0]), |z| assert!(z.is_none()))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_open_lorc() {
+        test_intersects!(
+            i!(Open[0.0, 1.0]);
+            [
+                (i!(LORC[-2.0, -1.0]), |z| assert!(z.is_none())),
+                (i!(LORC[-1.0, 0.0]), |z| assert!(z.is_none())),
+                (i!(LORC[-0.5, 0.5]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 0.5]))),
+                (i!(LORC[0.0, 1.0]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0]))),
+                (i!(LORC[0.5, 1.5]), |z| assert_eq!(z.unwrap(), i!(Open[0.5, 1.0]))),
+                (i!(LORC[1.0, 2.0]), |z| assert!(z.is_none())),
+                (i!(LORC[2.0, 3.0]), |z| assert!(z.is_none()))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_open_lcro() {
+        test_intersects!(
+            i!(Open[0.0, 1.0]);
+            [
+                (i!(LCRO[-2.0, -1.0]), |z| assert!(z.is_none())),
+                (i!(LCRO[-1.0, 0.0]), |z| assert!(z.is_none())),
+                (i!(LCRO[-0.5, 0.5]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 0.5]))),
+                (i!(LCRO[0.0, 1.0]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0]))),
+                (i!(LCRO[0.5, 1.5]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.5, 1.0]))),
+                (i!(LCRO[1.0, 2.0]), |z| assert!(z.is_none())),
+                (i!(LCRO[2.0, 3.0]), |z| assert!(z.is_none()))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_open_lo() {
+        test_intersects!(
+            i!(Open[0.0, 1.0]);
+            [
+                (i!(LO[-2.0]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0]))),
+                (i!(LO[-1.0]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0]))),
+                (i!(LO[-0.5]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0]))),
+                (i!(LO[0.0]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0]))),
+                (i!(LO[0.5]), |z| assert_eq!(z.unwrap(), i!(Open[0.5, 1.0]))),
+                (i!(LO[1.0]), |z| assert!(z.is_none())),
+                (i!(LO[2.0]), |z| assert!(z.is_none()))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_open_lc() {
+        test_intersects!(
+            i!(Open[0.0, 1.0]);
+            [
+                (i!(LC[-2.0]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0]))),
+                (i!(LC[-1.0]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0]))),
+                (i!(LC[-0.5]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0]))),
+                (i!(LC[0.0]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0]))),
+                (i!(LC[0.5]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.5, 1.0]))),
+                (i!(LC[1.0]), |z| assert!(z.is_none())),
+                (i!(LC[2.0]), |z| assert!(z.is_none()))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_open_ro() {
+        test_intersects!(
+            i!(Open[0.0, 1.0]);
+            [
+                (i!(RO[-2.0]), |z| assert!(z.is_none())),
+                (i!(RO[-1.0]), |z| assert!(z.is_none())),
+                (i!(RO[-0.5]), |z| assert!(z.is_none())),
+                (i!(RO[0.0]), |z| assert!(z.is_none())),
+                (i!(RO[0.5]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 0.5]))),
+                (i!(RO[1.0]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0]))),
+                (i!(RO[2.0]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0])))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_open_rc() {
+        test_intersects!(
+            i!(Open[0.0, 1.0]);
+            [
+                (i!(RC[-2.0]), |z| assert!(z.is_none())),
+                (i!(RC[-1.0]), |z| assert!(z.is_none())),
+                (i!(RC[-0.5]), |z| assert!(z.is_none())),
+                (i!(RC[0.0]), |z| assert!(z.is_none())),
+                (i!(RC[0.5]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 0.5]))),
+                (i!(RC[1.0]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0]))),
+                (i!(RC[2.0]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0])))
+            ]
+        );
+    }
+
+    // LORC \cap ...
+    #[test]
+    fn test_intersect_lorc_lorc() {
+        test_intersects!(
+            i!(LORC[0.0, 1.0]);
+            [
+                (i!(LORC[-2.0, -1.0]), |z| assert!(z.is_none())),
+                (i!(LORC[-1.0, 0.0]), |z| assert!(z.is_none())),
+                (i!(LORC[-0.5, 0.5]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 0.5]))),
+                (i!(LORC[0.0, 1.0]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 1.0]))),
+                (i!(LORC[0.5, 1.5]), |z| assert_eq!(z.unwrap(), i!(LORC[0.5, 1.0]))),
+                (i!(LORC[1.0, 2.0]), |z| assert!(z.is_none())),
+                (i!(LORC[2.0, 3.0]), |z| assert!(z.is_none()))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_lorc_lcro() {
+        test_intersects!(
+            i!(LORC[0.0, 1.0]);
+            [
+                (i!(LCRO[-2.0, -1.0]), |z| assert!(z.is_none())),
+                (i!(LCRO[-1.0, 0.0]), |z| assert!(z.is_none())),
+                (i!(LCRO[-0.5, 0.5]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 0.5]))),
+                (i!(LCRO[0.0, 1.0]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0]))),
+                (i!(LCRO[0.5, 1.5]), |z| assert_eq!(z.unwrap(), i!(Closed[0.5, 1.0]))),
+                (i!(LCRO[1.0, 2.0]), |z| assert_eq!(z.unwrap(), i!(Degenerate[1.0]))),
+                (i!(LCRO[2.0, 3.0]), |z| assert!(z.is_none()))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_lorc_lo() {
+        test_intersects!(
+            i!(LORC[0.0, 1.0]);
+            [
+                (i!(LO[-2.0]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 1.0]))),
+                (i!(LO[-1.0]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 1.0]))),
+                (i!(LO[-0.5]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 1.0]))),
+                (i!(LO[0.0]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 1.0]))),
+                (i!(LO[0.5]), |z| assert_eq!(z.unwrap(), i!(LORC[0.5, 1.0]))),
+                (i!(LO[1.0]), |z| assert!(z.is_none())),
+                (i!(LO[2.0]), |z| assert!(z.is_none()))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_lorc_lc() {
+        test_intersects!(
+            i!(LORC[0.0, 1.0]);
+            [
+                (i!(LC[-2.0]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 1.0]))),
+                (i!(LC[-1.0]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 1.0]))),
+                (i!(LC[-0.5]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 1.0]))),
+                (i!(LC[0.0]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 1.0]))),
+                (i!(LC[0.5]), |z| assert_eq!(z.unwrap(), i!(Closed[0.5, 1.0]))),
+                (i!(LC[1.0]), |z| assert_eq!(z.unwrap(), i!(Degenerate[1.0]))),
+                (i!(LC[2.0]), |z| assert!(z.is_none()))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_lorc_ro() {
+        test_intersects!(
+            i!(LORC[0.0, 1.0]);
+            [
+                (i!(RO[-2.0]), |z| assert!(z.is_none())),
+                (i!(RO[-1.0]), |z| assert!(z.is_none())),
+                (i!(RO[-0.5]), |z| assert!(z.is_none())),
+                (i!(RO[0.0]), |z| assert!(z.is_none())),
+                (i!(RO[0.5]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 0.5]))),
+                (i!(RO[1.0]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0]))),
+                (i!(RO[2.0]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 1.0])))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_lorc_rc() {
+        test_intersects!(
+            i!(LORC[0.0, 1.0]);
+            [
+                (i!(RC[-2.0]), |z| assert!(z.is_none())),
+                (i!(RC[-1.0]), |z| assert!(z.is_none())),
+                (i!(RC[-0.5]), |z| assert!(z.is_none())),
+                (i!(RC[0.0]), |z| assert!(z.is_none())),
+                (i!(RC[0.5]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 0.5]))),
+                (i!(RC[1.0]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 1.0]))),
+                (i!(RC[2.0]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 1.0])))
+            ]
+        );
+    }
+
+    // LCRO \cap ...
+    #[test]
+    fn test_intersect_lcro_lcro() {
+        test_intersects!(
+            i!(LCRO[0.0, 1.0]);
+            [
+                (i!(LCRO[-2.0, -1.0]), |z| assert!(z.is_none())),
+                (i!(LCRO[-1.0, 0.0]), |z| assert!(z.is_none())),
+                (i!(LCRO[-0.5, 0.5]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 0.5]))),
+                (i!(LCRO[0.0, 1.0]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 1.0]))),
+                (i!(LCRO[0.5, 1.5]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.5, 1.0]))),
+                (i!(LCRO[1.0, 2.0]), |z| assert!(z.is_none())),
+                (i!(LCRO[2.0, 3.0]), |z| assert!(z.is_none()))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_lcro_lo() {
+        test_intersects!(
+            i!(LCRO[0.0, 1.0]);
+            [
+                (i!(LO[-2.0]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 1.0]))),
+                (i!(LO[-1.0]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 1.0]))),
+                (i!(LO[-0.5]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 1.0]))),
+                (i!(LO[0.0]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0]))),
+                (i!(LO[0.5]), |z| assert_eq!(z.unwrap(), i!(Open[0.5, 1.0]))),
+                (i!(LO[1.0]), |z| assert!(z.is_none())),
+                (i!(LO[2.0]), |z| assert!(z.is_none()))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_lcro_lc() {
+        test_intersects!(
+            i!(LCRO[0.0, 1.0]);
+            [
+                (i!(LC[-2.0]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 1.0]))),
+                (i!(LC[-1.0]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 1.0]))),
+                (i!(LC[-0.5]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 1.0]))),
+                (i!(LC[0.0]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 1.0]))),
+                (i!(LC[0.5]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.5, 1.0]))),
+                (i!(LC[1.0]), |z| assert!(z.is_none())),
+                (i!(LC[2.0]), |z| assert!(z.is_none()))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_lcro_ro() {
+        test_intersects!(
+            i!(LCRO[0.0, 1.0]);
+            [
+                (i!(RO[-2.0]), |z| assert!(z.is_none())),
+                (i!(RO[-1.0]), |z| assert!(z.is_none())),
+                (i!(RO[-0.5]), |z| assert!(z.is_none())),
+                (i!(RO[0.0]), |z| assert!(z.is_none())),
+                (i!(RO[0.5]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 0.5]))),
+                (i!(RO[1.0]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 1.0]))),
+                (i!(RO[2.0]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 1.0])))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_lcro_rc() {
+        test_intersects!(
+            i!(LCRO[0.0, 1.0]);
+            [
+                (i!(RC[-2.0]), |z| assert!(z.is_none())),
+                (i!(RC[-1.0]), |z| assert!(z.is_none())),
+                (i!(RC[-0.5]), |z| assert!(z.is_none())),
+                (i!(RC[0.0]), |z| assert_eq!(z.unwrap(), i!(Degenerate[0.0]))),
+                (i!(RC[0.5]), |z| assert_eq!(z.unwrap(), i!(Closed[0.0, 0.5]))),
+                (i!(RC[1.0]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 1.0]))),
+                (i!(RC[2.0]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 1.0])))
+            ]
+        );
+    }
+
+    // LO \cap ...
+    #[test]
+    fn test_intersect_lo_lo() {
+        test_intersects!(
+            i!(LO[0.0]);
+            [
+                (i!(LO[-2.0]), |z| assert_eq!(z.unwrap(), i!(LO[0.0]))),
+                (i!(LO[-1.0]), |z| assert_eq!(z.unwrap(), i!(LO[0.0]))),
+                (i!(LO[-0.5]), |z| assert_eq!(z.unwrap(), i!(LO[0.0]))),
+                (i!(LO[0.0]), |z| assert_eq!(z.unwrap(), i!(LO[0.0]))),
+                (i!(LO[0.5]), |z| assert_eq!(z.unwrap(), i!(LO[0.5]))),
+                (i!(LO[1.0]), |z| assert_eq!(z.unwrap(), i!(LO[1.0]))),
+                (i!(LO[2.0]), |z| assert_eq!(z.unwrap(), i!(LO[2.0])))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_lo_lc() {
+        test_intersects!(
+            i!(LO[0.0]);
+            [
+                (i!(LC[-2.0]), |z| assert_eq!(z.unwrap(), i!(LO[0.0]))),
+                (i!(LC[-1.0]), |z| assert_eq!(z.unwrap(), i!(LO[0.0]))),
+                (i!(LC[-0.5]), |z| assert_eq!(z.unwrap(), i!(LO[0.0]))),
+                (i!(LC[0.0]), |z| assert_eq!(z.unwrap(), i!(LO[0.0]))),
+                (i!(LC[0.5]), |z| assert_eq!(z.unwrap(), i!(LC[0.5]))),
+                (i!(LC[1.0]), |z| assert_eq!(z.unwrap(), i!(LC[1.0]))),
+                (i!(LC[2.0]), |z| assert_eq!(z.unwrap(), i!(LC[2.0])))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_lo_ro() {
+        test_intersects!(
+            i!(LO[0.0]);
+            [
+                (i!(RO[-2.0]), |z| assert!(z.is_none())),
+                (i!(RO[-1.0]), |z| assert!(z.is_none())),
+                (i!(RO[-0.5]), |z| assert!(z.is_none())),
+                (i!(RO[0.0]), |z| assert!(z.is_none())),
+                (i!(RO[0.5]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 0.5]))),
+                (i!(RO[1.0]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 1.0]))),
+                (i!(RO[2.0]), |z| assert_eq!(z.unwrap(), i!(Open[0.0, 2.0])))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_lo_rc() {
+        test_intersects!(
+            i!(LO[0.0]);
+            [
+                (i!(RC[-2.0]), |z| assert!(z.is_none())),
+                (i!(RC[-1.0]), |z| assert!(z.is_none())),
+                (i!(RC[-0.5]), |z| assert!(z.is_none())),
+                (i!(RC[0.0]), |z| assert!(z.is_none())),
+                (i!(RC[0.5]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 0.5]))),
+                (i!(RC[1.0]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 1.0]))),
+                (i!(RC[2.0]), |z| assert_eq!(z.unwrap(), i!(LORC[0.0, 2.0])))
+            ]
+        );
+    }
+
+    // LC \cap ...
+    #[test]
+    fn test_intersect_lc_lc() {
+        test_intersects!(
+            i!(LC[0.0]);
+            [
+                (i!(LC[-2.0]), |z| assert_eq!(z.unwrap(), i!(LC[0.0]))),
+                (i!(LC[-1.0]), |z| assert_eq!(z.unwrap(), i!(LC[0.0]))),
+                (i!(LC[-0.5]), |z| assert_eq!(z.unwrap(), i!(LC[0.0]))),
+                (i!(LC[0.0]), |z| assert_eq!(z.unwrap(), i!(LC[0.0]))),
+                (i!(LC[0.5]), |z| assert_eq!(z.unwrap(), i!(LC[0.5]))),
+                (i!(LC[1.0]), |z| assert_eq!(z.unwrap(), i!(LC[1.0]))),
+                (i!(LC[2.0]), |z| assert_eq!(z.unwrap(), i!(LC[2.0])))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_lc_ro() {
+        test_intersects!(
+            i!(LC[0.0]);
+            [
+                (i!(RO[-2.0]), |z| assert!(z.is_none())),
+                (i!(RO[-1.0]), |z| assert!(z.is_none())),
+                (i!(RO[-0.5]), |z| assert!(z.is_none())),
+                (i!(RO[0.0]), |z| assert!(z.is_none())),
+                (i!(RO[0.5]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 0.5]))),
+                (i!(RO[1.0]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 1.0]))),
+                (i!(RO[2.0]), |z| assert_eq!(z.unwrap(), i!(LCRO[0.0, 2.0])))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_lc_rc() {
+        test_intersects!(
+            i!(LC[0.0]);
+            [
+                (i!(RC[-2.0]), |z| assert!(z.is_none())),
+                (i!(RC[-1.0]), |z| assert!(z.is_none())),
+                (i!(RC[-0.5]), |z| assert!(z.is_none())),
+                (i!(RC[0.0]), |z| assert_eq!(z.unwrap(), i!(Degenerate[0.0]))),
+                (i!(RC[0.5]), |z| assert_eq!(z.unwrap(), i!(Closed[0.0, 0.5]))),
+                (i!(RC[1.0]), |z| assert_eq!(z.unwrap(), i!(Closed[0.0, 1.0]))),
+                (i!(RC[2.0]), |z| assert_eq!(z.unwrap(), i!(Closed[0.0, 2.0])))
+            ]
+        );
+    }
+
+    // RO \cap ...
+    #[test]
+    fn test_intersect_ro_ro() {
+        test_intersects!(
+            i!(RO[0.0]);
+            [
+                (i!(RO[-2.0]), |z| assert_eq!(z.unwrap(), i!(RO[-2.0]))),
+                (i!(RO[-1.0]), |z| assert_eq!(z.unwrap(), i!(RO[-1.0]))),
+                (i!(RO[-0.5]), |z| assert_eq!(z.unwrap(), i!(RO[-0.5]))),
+                (i!(RO[0.0]), |z| assert_eq!(z.unwrap(), i!(RO[0.0]))),
+                (i!(RO[0.5]), |z| assert_eq!(z.unwrap(), i!(RO[0.0]))),
+                (i!(RO[1.0]), |z| assert_eq!(z.unwrap(), i!(RO[0.0]))),
+                (i!(RO[2.0]), |z| assert_eq!(z.unwrap(), i!(RO[0.0])))
+            ]
+        );
+    }
+
+    #[test]
+    fn test_intersect_ro_rc() {
+        test_intersects!(
+            i!(RO[0.0]);
+            [
+                (i!(RC[-2.0]), |z| assert_eq!(z.unwrap(), i!(RC[-2.0]))),
+                (i!(RC[-1.0]), |z| assert_eq!(z.unwrap(), i!(RC[-1.0]))),
+                (i!(RC[-0.5]), |z| assert_eq!(z.unwrap(), i!(RC[-0.5]))),
+                (i!(RC[0.0]), |z| assert_eq!(z.unwrap(), i!(RO[0.0]))),
+                (i!(RC[0.5]), |z| assert_eq!(z.unwrap(), i!(RO[0.0]))),
+                (i!(RC[1.0]), |z| assert_eq!(z.unwrap(), i!(RO[0.0]))),
+                (i!(RC[2.0]), |z| assert_eq!(z.unwrap(), i!(RO[0.0])))
+            ]
+        );
+    }
+
+    // RC \cap ...
+    #[test]
+    fn test_intersect_rc_rc() {
+        test_intersects!(
+            i!(RC[0.0]);
+            [
+                (i!(RC[-2.0]), |z| assert_eq!(z.unwrap(), i!(RC[-2.0]))),
+                (i!(RC[-1.0]), |z| assert_eq!(z.unwrap(), i!(RC[-1.0]))),
+                (i!(RC[-0.5]), |z| assert_eq!(z.unwrap(), i!(RC[-0.5]))),
+                (i!(RC[0.0]), |z| assert_eq!(z.unwrap(), i!(RC[0.0]))),
+                (i!(RC[0.5]), |z| assert_eq!(z.unwrap(), i!(RC[0.0]))),
+                (i!(RC[1.0]), |z| assert_eq!(z.unwrap(), i!(RC[0.0]))),
+                (i!(RC[2.0]), |z| assert_eq!(z.unwrap(), i!(RC[0.0])))
+            ]
+        );
     }
 }
