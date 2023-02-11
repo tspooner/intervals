@@ -11,7 +11,7 @@
 ## Installation
 ```toml
 [dependencies]
-intervals = "1.0"
+intervals = "2.0"
 ```
 
 ## Contributing
