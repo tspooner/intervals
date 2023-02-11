@@ -8,7 +8,7 @@ authors = ["Tom Spooner <spooner10000@gmail.com>"]
 readme = "README.md"
 license-file = "LICENSE"
 
-keywords = ["math", "algebra", "interval", "bounds", "temporal", "window"]
+keywords = ["math", "algebra", "interval", "bounds", "window"]
 
 repository = "https://github.com/tspooner/intervals"
 documentation = "https://docs.rs/intervals"
