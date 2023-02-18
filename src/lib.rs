@@ -302,16 +302,17 @@ where
     /// # Examples
     /// ```
     /// # extern crate intervals;
-    /// let interval = intervals::Interval::closed_unchecked(0.0, 0.0);
-    ///
-    /// assert!(interval.is_degenerate());
+    /// # use intervals::Interval;
+    /// assert!(Interval::closed_unchecked(0.0, 0.0).is_degenerate());
+    /// assert!(!Interval::open_unchecked(0.0, 0.0).is_degenerate());
     /// ```
     pub fn is_degenerate<'a>(&'a self) -> bool
     where
         &'a L::Value: PartialEq
     {
         match (self.left.value(), self.right.value()) {
-            (Some(left), Some(right)) => left == right,
+            (Some(left), Some(right)) if self.left.is_closed() && self.right.is_closed()
+                => left == right,
             _ => false,
         }
     }
