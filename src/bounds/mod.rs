@@ -38,13 +38,79 @@ pub trait BoundDisplay: Bound {
 ///
 /// We define the pinch operation as the logic applied at the left and
 /// right boundaries of a pair of intervals when taking the intersection.
+///
+/// Note: [Pinch] can be seen as the inverse of [Unroll].
 pub trait Pinch<T>: Bound {
     type Left: Bound<Value = Self::Value>;
     type Right: Bound<Value = Self::Value>;
 
+    /// Returns the left-pinched bound.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # extern crate intervals;
+    /// # use intervals::bounds::{self, Pinch};
+    /// let a = bounds::Closed(1.0f64);
+    /// let b = bounds::Open(2.0f64);
+    ///
+    /// assert_eq!(a.pinch_left(b), b);
+    /// ```
     fn pinch_left(self, other: T) -> Self::Left;
 
+    /// Returns the right-pinched bound.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # extern crate intervals;
+    /// # use intervals::bounds::{self, Pinch};
+    /// let a = bounds::Closed(1.0f64);
+    /// let b = bounds::Open(2.0f64);
+    ///
+    /// assert_eq!(a.pinch_right(b), a);
+    /// ```
     fn pinch_right(self, other: T) -> Self::Right;
+}
+
+/// Trait for "unrolling" bounds on the left and right.
+///
+/// We define the unroll operation as the logic applied at the left and
+/// right boundaries of a pair of intervals during the union-closure operation,
+/// but before inclusion of the limits.
+///
+/// Note: [Unroll] can be seen as the inverse of [Pinch].
+pub trait Unroll<T>: Bound {
+    type Left: Bound<Value = Self::Value>;
+    type Right: Bound<Value = Self::Value>;
+
+    /// Returns the left-unrolled bound.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # extern crate intervals;
+    /// # use intervals::bounds::{self, Unroll};
+    /// let a = bounds::Closed(1.0f64);
+    /// let b = bounds::Open(2.0f64);
+    ///
+    /// assert_eq!(a.unroll_left(b), a);
+    /// ```
+    fn unroll_left(self, other: T) -> Self::Left;
+
+    /// Returns the right-unrolled bound.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # extern crate intervals;
+    /// # use intervals::bounds::{self, Unroll};
+    /// let a = bounds::Closed(1.0f64);
+    /// let b = bounds::Open(2.0f64);
+    ///
+    /// assert_eq!(a.unroll_right(b), b);
+    /// ```
+    fn unroll_right(self, other: T) -> Self::Right;
 }
 
 mod no_bound;

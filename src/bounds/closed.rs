@@ -11,6 +11,7 @@ pub struct Closed<V>(pub V);
 
 impl<V> crate::private::Sealed for Closed<V> {}
 
+// Core:
 impl<V: PartialOrd> Bound for Closed<V> {
     type Value = V;
     type WithLimit = Closed<V>;
@@ -28,6 +29,7 @@ impl<V: PartialOrd> ProperBound for Closed<V> {
     fn proper_value(&self) -> &Self::Value { &self.0 }
 }
 
+// Formatting:
 impl<V: PartialOrd + fmt::Display> BoundDisplay for Closed<V> {
     fn fmt_left(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "[{}", self.0)
@@ -38,15 +40,7 @@ impl<V: PartialOrd + fmt::Display> BoundDisplay for Closed<V> {
     }
 }
 
-impl<V: PartialOrd> Pinch<NoBound<V>> for Closed<V> {
-    type Left = Closed<V>;
-    type Right = Closed<V>;
-
-    fn pinch_left(self, _: NoBound<V>) -> Closed<V> { self }
-
-    fn pinch_right(self, _: NoBound<V>) -> Closed<V> { self }
-}
-
+// Pinch:
 impl<V: PartialOrd> Pinch<Open<V>> for Closed<V> {
     type Left = OpenOrClosed<V>;
     type Right = OpenOrClosed<V>;
@@ -73,37 +67,50 @@ impl<V: PartialOrd> Pinch<Closed<V>> for Closed<V> {
     type Right = Closed<V>;
 
     fn pinch_left(self, other: Closed<V>) -> Closed<V> {
-        if self.0 >= other.0 { Closed(self.0) } else { Closed(other.0) }
+        if self.0 >= other.0 { self } else { other }
     }
 
     fn pinch_right(self, other: Closed<V>) -> Closed<V> {
-        if self.0 <= other.0 { Closed(self.0) } else { Closed(other.0) }
+        if self.0 <= other.0 { self } else { other }
     }
 }
 
-impl<V: PartialOrd> Pinch<OpenOrClosed<V>> for Closed<V> {
+// Unroll:
+impl<V: PartialOrd> Unroll<Open<V>> for Closed<V> {
     type Left = OpenOrClosed<V>;
     type Right = OpenOrClosed<V>;
 
-    fn pinch_left(self, other: OpenOrClosed<V>) -> OpenOrClosed<V> {
-        match other {
-            OpenOrClosed::Closed(v) => OpenOrClosed::Closed(
-                self.pinch_left(Closed(v)).0
-            ),
-            OpenOrClosed::Open(v) => self.pinch_left(Open(v)),
+    fn unroll_left(self, other: Open<V>) -> OpenOrClosed<V> {
+        if self.0 <= other.0 {
+            OpenOrClosed::Closed(self.0)
+        } else {
+            OpenOrClosed::Open(other.0)
         }
     }
 
-    fn pinch_right(self, other: OpenOrClosed<V>) -> OpenOrClosed<V> {
-        match other {
-            OpenOrClosed::Closed(v) => OpenOrClosed::Closed(
-                self.pinch_right(Closed(v)).0
-            ),
-            OpenOrClosed::Open(v) => self.pinch_right(Open(v)),
+    fn unroll_right(self, other: Open<V>) -> OpenOrClosed<V> {
+        if self.0 >= other.0 {
+            OpenOrClosed::Closed(self.0)
+        } else {
+            OpenOrClosed::Open(other.0)
         }
     }
 }
 
+impl<V: PartialOrd> Unroll<Closed<V>> for Closed<V> {
+    type Left = Closed<V>;
+    type Right = Closed<V>;
+
+    fn unroll_left(self, other: Closed<V>) -> Closed<V> {
+        if self.0 <= other.0 { self } else { other }
+    }
+
+    fn unroll_right(self, other: Closed<V>) -> Closed<V> {
+        if self.0 >= other.0 { self } else { other }
+    }
+}
+
+// Comparison:
 impl<V> std::cmp::PartialEq<Open<V>> for Closed<V> {
     fn eq(&self, _: &Open<V>) -> bool { false }
 }
@@ -179,6 +186,50 @@ mod tests {
             } else {
                 assert_eq!(a.pinch_right(Open(x)), Open(x));
                 assert_eq!(a.pinch_right(OpenOrClosed::Open(x)), Open(x));
+            }
+        }
+    }
+
+    #[test]
+    fn test_unroll_nobound() {
+        let a = Closed(0.0f64);
+
+        assert_eq!(a.unroll_left(NoBound::new()), NoBound::new());
+        assert_eq!(a.unroll_right(NoBound::new()), NoBound::new());
+    }
+
+    #[test]
+    fn test_unroll_closed() {
+        let a = Closed(0.0f64);
+
+        for x in [-2.0, -1.0, 0.0, 1.0, 2.0] {
+            assert_eq!(a.unroll_left(Closed(x)), Closed(x.min(0.0)));
+            assert_eq!(a.unroll_right(Closed(x)), Closed(x.max(0.0)));
+
+            assert_eq!(a.unroll_left(OpenOrClosed::Closed(x)), Closed(x.min(0.0)));
+            assert_eq!(a.unroll_right(OpenOrClosed::Closed(x)), Closed(x.max(0.0)));
+        }
+    }
+
+    #[test]
+    fn test_unroll_open() {
+        let a = Closed(0.0f64);
+
+        for x in [-2.0, -1.0, 0.0, 1.0, 2.0] {
+            if x < 0.0 {
+                assert_eq!(a.unroll_left(Open(x)), Open(x));
+                assert_eq!(a.unroll_left(OpenOrClosed::Open(x)), Open(x));
+            } else {
+                assert_eq!(a.unroll_left(Open(x)), Closed(0.0));
+                assert_eq!(a.unroll_left(OpenOrClosed::Open(x)), Closed(0.0));
+            }
+
+            if x > 0.0 {
+                assert_eq!(a.unroll_right(Open(x)), Open(x));
+                assert_eq!(a.unroll_right(OpenOrClosed::Open(x)), Open(x));
+            } else {
+                assert_eq!(a.unroll_right(Open(x)), Closed(0.0));
+                assert_eq!(a.unroll_right(OpenOrClosed::Open(x)), Closed(0.0));
             }
         }
     }
