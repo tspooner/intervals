@@ -2,7 +2,7 @@
 name = "intervals"
 description = "A generic interval type with support for open/closed bounds."
 
-version = "2.0.2"
+version = "2.1.0"
 authors = ["Tom Spooner <spooner10000@gmail.com>"]
 
 readme = "README.md"
